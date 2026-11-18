@@ -4,13 +4,11 @@ import UniformTypeIdentifiers
 import WebKit
 
 /// 小柯機器人棋類大全 — Mac 版（Mac App Store）
-/// 和 iPhone／iPad 版同一份網頁（總選單＋象棋、跳棋、圍棋，LocalServer 在 127.0.0.1 提供），畫面是電腦版版面（各遊戲 js/xk-mobile.js 的 mac 模式）。
+/// 和 iPhone／iPad 版同一份網頁（總選單＋象棋、跳棋、圍棋），用自訂網址 xks://localhost/ 直接讀 App 內檔案（AppScheme，不開網路伺服器），畫面是電腦版版面（各遊戲 js/xk-mobile.js 的 mac 模式）。
 /// 視窗關掉就結束程式：AI、音樂、語音通話全部停止。
 @main
 struct XiaokeBoardGamesMacApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
-    init() { LocalServer.shared.start() }
-
     var body: some Scene {
         WindowGroup {
             WebContainer()
@@ -41,12 +39,14 @@ final class Web: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate
         "xkg": ("小柯圍棋", "圍棋棋譜.sgf"),
     ]
     let view: WKWebView
+    private let scheme = AppScheme()
     private var saves: [String: (url: URL, handle: FileHandle, name: String)] = [:]
 
     override init() {
         let cfg = WKWebViewConfiguration()
         cfg.websiteDataStore = .default()
         cfg.mediaTypesRequiringUserActionForPlayback = []
+        cfg.setURLSchemeHandler(scheme, forURLScheme: AppScheme.scheme)
         // mac：電腦版版面；store：App Store 版（不檢查更新、由 App Store 更新）；suite：在棋類大全裡
         let shim = WKUserScript(source: """
             window.XiaokeIOS = { store: true, mac: true, suite: true };
@@ -73,6 +73,13 @@ final class Web: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate
                       r.cards = document.querySelectorAll('.card').length;
                       r.cls = document.documentElement.className;
                       r.win = innerWidth + 'x' + innerHeight;
+                      r.origin = location.origin;
+                      r.secure = window.isSecureContext;
+                      r.mic = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+                      r.rtc = typeof RTCPeerConnection === 'function';
+                      r.idb = await new Promise(function (ok) { try { var q = indexedDB.open('xks-selftest'); q.onsuccess = function () { q.result.close(); ok(true); }; q.onerror = function () { ok(false); }; } catch (e) { ok(String(e)); } });
+                      try { var rg = await fetch('checkers/assets/music/track01.mp3', { headers: { Range: 'bytes=0-99' } }); r.range = rg.status + ' ' + (await rg.arrayBuffer()).byteLength; } catch (e) { r.range = String(e); }
+                      try { r.missing = (await fetch('no-such-file.js')).status; } catch (e) { r.missing = String(e); }
                       log(r);
                       if (step === 0) { sessionStorage.setItem('xk.selftest', '1'); document.querySelector('[data-play="chess"]').click(); }
                       return;
@@ -85,6 +92,19 @@ final class Web: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate
                     r.store = xk.store;
                     r.name = (await xk.settings.get()).playerName;
                     r.tracks = (await xk.music.list()).length;
+                    r.worker = await new Promise(function (ok) {
+                      if (location.pathname.indexOf('/go/') !== 0) return ok('n/a');
+                      try { var wk = new Worker('js/engine-worker.js', { type: 'module' }); var done = false;
+                        wk.onerror = function (e) { if (!done) { done = true; ok('error ' + (e.message || '')); } };
+                        setTimeout(function () { if (!done) { done = true; wk.terminate(); ok('ok'); } }, 2000);
+                      } catch (e) { ok('throw ' + e); }
+                    });
+                    r.audio = await new Promise(function (ok) {
+                      var a = new Audio(); var t = setTimeout(function () { ok('timeout'); }, 8000);
+                      a.onloadedmetadata = function () { clearTimeout(t); ok('ok ' + Math.round(a.duration) + 's'); };
+                      a.onerror = function () { clearTimeout(t); ok('error ' + (a.error && a.error.code)); };
+                      a.preload = 'metadata'; a.src = 'assets/music/track01.mp3';
+                    });
                     await w(1500);
                     r.back = !!document.querySelector('#xksHome');
                     r.backVisible = document.documentElement.classList.contains('xks-home');
@@ -105,12 +125,12 @@ final class Web: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate
         view.uiDelegate = self
         view.setValue(false, forKey: "drawsBackground")
         if #available(macOS 13.3, *) { view.isInspectable = true }
-        view.load(URLRequest(url: LocalServer.shared.url))
+        view.load(URLRequest(url: AppScheme.start))
     }
 
     // 外部連結（技術支援頁、Claude 主控台）用預設瀏覽器開
     func webView(_ w: WKWebView, decidePolicyFor a: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        if let u = a.request.url, u.host != "127.0.0.1", u.scheme?.hasPrefix("http") == true, a.targetFrame?.isMainFrame != false {
+        if let u = a.request.url, u.scheme?.hasPrefix("http") == true, a.targetFrame?.isMainFrame != false {
             NSWorkspace.shared.open(u); decisionHandler(.cancel); return
         }
         decisionHandler(.allow)
@@ -132,7 +152,7 @@ final class Web: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate
     // 語音通話要用麥克風：系統會先問一次 App 的權限，網頁這邊直接允許
     func webView(_ w: WKWebView, requestMediaCapturePermissionFor origin: WKSecurityOrigin, initiatedByFrame frame: WKFrameInfo,
                  type: WKMediaCaptureType, decisionHandler: @escaping (WKPermissionDecision) -> Void) {
-        decisionHandler(origin.host == "127.0.0.1" && type == .microphone ? .grant : .deny)
+        decisionHandler(origin.protocol == AppScheme.scheme && origin.host == "localhost" && type == .microphone ? .grant : .deny)
     }
 
     func webViewWebContentProcessDidTerminate(_ w: WKWebView) { Self.log("網頁程序結束，重新載入"); w.reload() }

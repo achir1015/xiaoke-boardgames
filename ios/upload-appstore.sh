@@ -7,7 +7,8 @@ cd "$(dirname "$0")"
 mkdir -p build
 rm -f build/upload.done
 exec > >(tee build/upload.log) 2>&1
-for A in XiaokeBoardGames XiaokeBoardGamesMac; do
+# 只傳其中一個：bash upload-appstore.sh XiaokeBoardGamesMac
+for A in ${@:-XiaokeBoardGames XiaokeBoardGamesMac}; do
   echo "== $A"
   [ -d build/$A-store.xcarchive ] || { echo "沒有 build/$A-store.xcarchive"; continue; }
   rm -rf build/upload-$A
