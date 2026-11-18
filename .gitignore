@@ -1,0 +1,7 @@
+node_modules/
+web/
+ios/web/
+ios/build/
+ios/*.xcodeproj/
+ios/**/Info.plist
+e2e/out/

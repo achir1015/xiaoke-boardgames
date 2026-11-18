@@ -1,0 +1,19 @@
+{
+  "name": "xiaoke-boardgames",
+  "productName": "小柯機器人棋類大全",
+  "version": "1.0.0",
+  "private": true,
+  "description": "小柯機器人棋類大全：象棋、中國跳棋、圍棋，一個 App 全部玩（iPhone、iPad、Mac App Store 版）",
+  "author": "吳玉柱",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-web.mjs",
+    "build:all": "node scripts/build-web.mjs --rebuild",
+    "test": "node e2e/suite.mjs",
+    "shots": "node e2e/shots.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.48.0"
+  }
+}

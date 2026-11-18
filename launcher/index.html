@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'">
+<title>小柯機器人棋類大全</title>
+<link rel="stylesheet" href="home.css">
+<script src="version.js"></script>
+<script src="home.js" defer></script>
+</head>
+<body>
+  <main id="app" class="wrap">
+    <header class="top">
+      <img class="logo" src="img/icon.png" alt="">
+      <div class="titles">
+        <h1>小柯機器人棋類大全</h1>
+        <p class="sub">象棋・跳棋・圍棋　和 AI 對賽、與朋友連線、跟小柯學下棋</p>
+      </div>
+      <div class="top-btns">
+        <button id="btnSettings" class="ghost" type="button">⚙ 設定</button>
+        <button id="btnAbout" class="ghost" type="button">ℹ 關於</button>
+      </div>
+    </header>
+
+    <section class="hello">
+      <div class="robot" aria-hidden="true"></div>
+      <div class="bubble"><b id="helloName">棋友</b>，<span id="helloText">今天想下哪一種棋？</span></div>
+    </section>
+
+    <section id="cards" class="cards"></section>
+
+    <footer class="foot">系統開發：吳玉柱 先生 與 Claude AI Opus 5.5</footer>
+  </main>
+</body>
+</html>
