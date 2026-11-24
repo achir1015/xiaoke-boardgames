@@ -72,7 +72,7 @@ targets:
       base:
         PRODUCT_NAME: 小柯機器人棋類大全      # 「應用程式」資料夾裡顯示的名稱
         PRODUCT_MODULE_NAME: XiaokeBoardGamesMac
-        CURRENT_PROJECT_VERSION: "10001"     # 1.0.0 Mac 重新上傳（拿掉 network.server，App Store 2.4.5）
+        CURRENT_PROJECT_VERSION: "10002"     # 1.0.0 Mac 第三次上傳（10001 拿掉 network.server；10002 App Store 版拿掉安裝頁、封鎖即檢舉）；下一版刪掉這行
         PRODUCT_BUNDLE_IDENTIFIER: com.achir.xiaokeboardgames   # 和 iPhone／iPad 版同一個 Bundle ID：App Store 同一個項目
         ARCHS: "$(ARCHS_STANDARD)"
         CODE_SIGN_STYLE: Automatic

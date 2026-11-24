@@ -24,6 +24,31 @@ function copyDir(src, dst) {
   }
 }
 
+// App Store 版專用的修改（各遊戲自己的線上版、Windows、Android 版不受影響）：
+// 1. 2.5.2：拿掉 iPhone／iPad 線上安裝頁（itms-services）相關的網址與按鈕，App Store 版只由 App Store 更新
+// 2. 1.2：封鎖一定同時檢舉（通知開發者），回報頁改到棋類大全的支援頁，並帶上遊戲與對方暱稱
+const BOARD_SITE = 'https://achir1015.github.io/xiaoke-boardgames/';
+function sub(file, from, to, label) {
+  const t = fs.readFileSync(file, 'utf8');
+  const n = typeof from === 'string' ? t.split(from).length - 1 : (t.match(new RegExp(from.source, from.flags.includes('g') ? from.flags : from.flags + 'g')) || []).length;
+  if (n !== 1) throw new Error(`${path.relative(OUT, file)}：${label} 應該剛好 1 處，找到 ${n} 處`);
+  fs.writeFileSync(file, t.replace(from, to));
+}
+function storePatch(id, dest) {
+  const mob = path.join(dest, 'js/xk-mobile.js');
+  sub(mob, /var IOS_INSTALL_PAGE = '[^']*';/, "var IOS_INSTALL_PAGE = '';", '安裝頁網址');
+  sub(mob, 'openPage: function () { openUrl(', 'openPage: function () { if (store) return Promise.resolve(); openUrl(', '開啟下載頁');
+  const m = fs.readFileSync(mob, 'utf8');
+  fs.writeFileSync(mob, m.split('\n').filter((l) => !/itms-services/.test(l)).join('\n'));
+  const app = path.join(dest, 'js/app.js');
+  sub(app, /const SUPPORT_URL = '[^']*';/, `const SUPPORT_URL = '${BOARD_SITE}support.html';`, '支援頁網址');
+  sub(app, "[{ label: '取消', value: 0 }, { label: '只封鎖', value: 1 }, { label: '封鎖並檢舉', value: 2, primary: true }]",
+    "[{ label: '取消', value: 0 }, { label: '封鎖並檢舉', value: 2, primary: true }]", '封鎖選項');
+  sub(app, "if (v === 2) xk.openExternal(SUPPORT_URL + '#report');",
+    `if (v) xk.openExternal(SUPPORT_URL + '?game=${id}&who=' + encodeURIComponent(name) + '&date=' + encodeURIComponent(new Date().toISOString().slice(0, 16).replace('T', ' ')) + '#report');`, '檢舉網址');
+  sub(app, /(可以)?按「封鎖並檢舉」(會)?開啟回報頁/, '封鎖時會同時開啟回報頁（已填好遊戲與對方暱稱）', '封鎖說明');
+}
+
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 fs.rmSync(OUT, { recursive: true, force: true });
 copyDir(path.join(ROOT, 'launcher'), OUT);
@@ -62,11 +87,22 @@ for (const g of GAMES) {
     }
   })(dest);
   if (left.length) throw new Error(`${g.id} 還有 '../../assets/' 路徑：${left.join(', ')}`);
-  const ver = JSON.parse(fs.readFileSync(path.join(g.dir, 'package.json'), 'utf8')).version;
+  storePatch(g.id, dest);
+  const ver =JSON.parse(fs.readFileSync(path.join(g.dir, 'package.json'), 'utf8')).version;
   games[g.id] = { name: g.name, version: ver };
   console.log(`✔ ${g.name} ${ver}`);
 }
-fs.writeFileSync(path.join(OUT, 'version.js'), `window.XKS_VERSION = ${JSON.stringify(pkg.version)};\nwindow.XKS_GAMES = ${JSON.stringify(games)};\n`);
+// 最後檢查：App 裡不可以有安裝其他 App 的網址（App Store 2.5.2）
+const bad = [];
+(function scan(d) {
+  for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    const p = path.join(d, e.name);
+    if (e.isDirectory()) scan(p);
+    else if (/\.(js|html|json|css)$/.test(e.name) && /itms-services|github\.io\/xiaoke-(chess|checkers|go)\/ios/.test(fs.readFileSync(p, 'utf8'))) bad.push(path.relative(OUT, p));
+  }
+})(OUT);
+if (bad.length) throw new Error('還有安裝頁網址：' + bad.join(', '));
+fs.writeFileSync(path.join(OUT, 'version.js'),`window.XKS_VERSION = ${JSON.stringify(pkg.version)};\nwindow.XKS_GAMES = ${JSON.stringify(games)};\n`);
 let bytes = 0;
 (function walk(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else bytes += fs.statSync(p).size; } })(OUT);
 console.log(`web/ 完成：棋類大全 ${pkg.version}，共 ${(bytes / 1048576).toFixed(0)} MB`);

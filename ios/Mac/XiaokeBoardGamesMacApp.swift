@@ -131,12 +131,13 @@ final class Web: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate
     // 外部連結（技術支援頁、Claude 主控台）用預設瀏覽器開
     func webView(_ w: WKWebView, decidePolicyFor a: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         if let u = a.request.url, u.scheme?.hasPrefix("http") == true, a.targetFrame?.isMainFrame != false {
-            NSWorkspace.shared.open(u); decisionHandler(.cancel); return
+            if ExternalLinks.allowed(u) { NSWorkspace.shared.open(u) }
+            decisionHandler(.cancel); return
         }
         decisionHandler(.allow)
     }
     func webView(_ w: WKWebView, createWebViewWith c: WKWebViewConfiguration, for a: WKNavigationAction, windowFeatures f: WKWindowFeatures) -> WKWebView? {
-        if let u = a.request.url { NSWorkspace.shared.open(u) }
+        if let u = a.request.url, ExternalLinks.allowed(u) { NSWorkspace.shared.open(u) }
         return nil
     }
 
@@ -212,7 +213,7 @@ final class Web: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate
             Self.log("[web \(s(0))] \(s(1))")
             replyHandler(true, nil)
         case "open_url":
-            if let u = URL(string: s(0)), ["github.com", "achir1015.github.io", "console.anthropic.com", "apps.apple.com"].contains(u.host ?? "") { NSWorkspace.shared.open(u) }
+            if let u = URL(string: s(0)), ExternalLinks.allowed(u) { NSWorkspace.shared.open(u) }
             replyHandler(true, nil)
         default:
             replyHandler(nil, "unknown command \(cmd)")

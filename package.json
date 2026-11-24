@@ -15,5 +15,6 @@
   },
   "devDependencies": {
     "playwright-core": "^1.48.0"
-  }
+  },
+  "build": 10001
 }

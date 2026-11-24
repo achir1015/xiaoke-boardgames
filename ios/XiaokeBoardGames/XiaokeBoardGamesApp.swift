@@ -84,12 +84,13 @@ final class Web: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate
     // 外部連結（技術支援、Claude 主控台）用 Safari 開；App 裡的總選單與三種棋都在 127.0.0.1
     func webView(_ w: WKWebView, decidePolicyFor a: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         if let u = a.request.url, u.host != "127.0.0.1", u.scheme?.hasPrefix("http") == true, a.targetFrame?.isMainFrame != false {
-            UIApplication.shared.open(u); decisionHandler(.cancel); return
+            if ExternalLinks.allowed(u) { UIApplication.shared.open(u) }
+            decisionHandler(.cancel); return
         }
         decisionHandler(.allow)
     }
     func webView(_ w: WKWebView, createWebViewWith c: WKWebViewConfiguration, for a: WKNavigationAction, windowFeatures f: WKWindowFeatures) -> WKWebView? {
-        if let u = a.request.url { UIApplication.shared.open(u) }
+        if let u = a.request.url, ExternalLinks.allowed(u) { UIApplication.shared.open(u) }
         return nil
     }
 
@@ -136,7 +137,7 @@ final class Web: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate
             NSLog("[web %@] %@", s(0), s(1))
             replyHandler(true, nil)
         case "open_url":
-            if let u = URL(string: s(0)), ["github.com", "achir1015.github.io", "console.anthropic.com", "apps.apple.com"].contains(u.host ?? "") { UIApplication.shared.open(u) }
+            if let u = URL(string: s(0)), ExternalLinks.allowed(u) { UIApplication.shared.open(u) }
             replyHandler(true, nil)
         default:
             replyHandler(nil, "unknown command \(cmd)")

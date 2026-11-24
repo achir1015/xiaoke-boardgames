@@ -20,6 +20,7 @@
   .dim { color: var(--dim); }
   ol, ul { padding-left: 1.3em; margin: 6px 0; }
   a.btn { display: inline-block; margin-top: 8px; padding: 10px 18px; border-radius: 10px; background: var(--red); color: #fff; text-decoration: none; font-weight: 700; }
+.who{font-weight:700;color:#f0c27a;margin:10px 0}
 </style>
 </head>
 <body>
@@ -41,17 +42,18 @@
 <ol>
 <li>雙方先進入同一種棋。一方在遊戲首頁按「建立房間」，畫面出現 6 位數房號。</li>
 <li>把房號告訴朋友，朋友在「加入房間」輸入房號。跳棋可以邀請一位或兩位朋友，空位由 AI 代下；比賽開始後才加入的人是觀棋者。</li>
-<li>iPhone、iPad、Mac 和 Windows、Android 版的小柯象棋、跳棋、圍棋都可以互相連線。</li>
+<li>iPhone、iPad、Mac 之間都可以互相連線對賽。</li>
 <li>連不上時：請確認各方都連上網路；公司或學校的網路若擋住點對點連線，可以改用手機網路試試。</li>
 </ol></section>
 
 <section id="report" class="alert"><h2>檢舉不當言行</h2>
 <p>連線對賽只會連到您分享房號的棋友。若有人在聊天或語音中有騷擾、辱罵、色情、暴力、歧視等不當言行：</p>
 <ol>
-<li>在對局畫面的「對話」分頁按「🚫 封鎖並檢舉」，選擇那位棋友：房主會把對方請出房間，參賽者會立即離開房間；之後對方無法再和您連線（可在「設定」解除封鎖）。</li>
-<li>到下方回報頁寫下發生的日期時間、對方暱稱與狀況（可附截圖）。開發者會在 24 小時內處理。</li>
+<li>在對局畫面的「對話」分頁按「🚫 封鎖並檢舉」，選擇那位棋友：房主會把對方請出房間，參賽者會立即離開房間；之後對方無法再和您連線（可在「設定」解除封鎖）。封鎖的同時，App 會自動打開這一頁，並帶上遊戲名稱、對方暱稱與時間。</li>
+<li>按下方「開啟回報頁」，補充發生的狀況（可附截圖）後送出。開發者會在 24 小時內處理：移除不當內容，並將違規的棋友加入封鎖名單。</li>
 </ol>
-<a class="btn" href="https://github.com/achir1015/xiaoke-boardgames/issues/new?title=%E6%AA%A2%E8%88%89%E4%B8%8D%E7%95%B6%E8%A8%80%E8%A1%8C&amp;labels=report">開啟回報頁</a>
+<p id="reportWho" class="who" hidden></p>
+<a id="reportBtn" class="btn" href="https://github.com/achir1015/xiaoke-boardgames/issues/new?title=%E6%AA%A2%E8%88%89%E4%B8%8D%E7%95%B6%E8%A8%80%E8%A1%8C&amp;labels=report">開啟回報頁</a>
 <p class="dim">聊天訊息與暱稱會自動過濾不雅字詞。本程式沒有帳號、沒有公開的聊天室，也不會保存聊天內容。</p></section>
 
 <section><h2>AI 軍師</h2>
@@ -63,5 +65,26 @@
 
 <p class="dim">系統開發：吳玉柱 先生 與 Claude AI Opus 5.5</p>
 </main>
+<script>
+// App 封鎖棋友時會帶上 ?game=&who=&date=，幫使用者把回報內容先填好
+(function () {
+  var q = new URLSearchParams(location.search), who = q.get('who');
+  if (!who) return;
+  var game = { chess: '象棋', checkers: '跳棋', go: '圍棋' }[q.get('game')] || '';
+  var date = q.get('date') || '';
+  var box = document.getElementById('reportWho');
+  box.textContent = '要檢舉的棋友：' + who + (game ? '（' + game + '）' : '') + (date ? '，時間 ' + date + '（UTC）' : '');
+  box.hidden = false;
+  var body = '遊戲：' + game + '
+對方暱稱：' + who + '
+時間（UTC）：' + date + '
+
+發生的狀況（請描述，可附截圖）：
+';
+  document.getElementById('reportBtn').href = 'https://github.com/achir1015/xiaoke-boardgames/issues/new?labels=report&title=' +
+    encodeURIComponent('檢舉不當言行：' + who + (game ? '（' + game + '）' : '')) + '&body=' + encodeURIComponent(body);
+  document.getElementById('report').scrollIntoView();
+})();
+</script>
 </body>
 </html>
